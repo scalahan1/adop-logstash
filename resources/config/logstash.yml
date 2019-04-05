@@ -17,12 +17,38 @@ input {
   }
   syslog {
     port => 25826
+    port => 51000
+    port => 52000
     # codec => multiline {
     #   #type => "all" # no type means for all inputs
     #   pattern => "(^.+Exception: .+)|(^\s+at .+)|(^\s+... \d+ more)|(^\s*Caused by:.+)"
     #   what => "previous"
     # }
   }
+}
+
+filter {
+  if [type] == "syslog" {
+    grok {
+      match => {
+        "message" => "%{SYSLOGTIMESTAMP:syslog_timestamp} %{SYSLOGHOST:syslog_hostname} %{DATA:syslog_rogram}(?:\[%{POSINT:syslog_pid}\])?: %{GREEDYDATA:syslog_message}"
+      }
+      add_field => [ "received_at", "%{@timestamp}" ]
+      add_field => [ "received_from", "%{host}" ]
+    }
+    syslog_pri { }
+    date {
+      match => [ "timestamp", "ISO8601" ]
+      }
+    }
+  }
+}
+
+output {
+  elasticsearch {
+    hosts => "elasticsearch:9200"
+    index => "calahan_index"
+  } 
 }
 
 filter {
